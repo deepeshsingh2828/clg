@@ -1,0 +1,11 @@
+﻿
+> frontend@0.0.0 lint
+> eslint .
+
+
+C:\Users\Deepanshu Singh\Downloads\2\2\frontend\src\components\Navbar.jsx
+  22:7  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+Γ£û 1 problem (0 errors, 1 warning)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
