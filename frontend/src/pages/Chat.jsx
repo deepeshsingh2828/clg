@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import { Send, UserCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const ENDPOINT = "http://localhost:5000";
+const ENDPOINT = "https://clg.onrender.com";
 let socket;
 
 const Chat = ({ user }) => {

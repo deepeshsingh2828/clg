@@ -13,7 +13,7 @@ export const NotificationProvider = ({ user, children }) => {
   useEffect(() => {
     if (!user) return;
 
-    const socket = io('http://localhost:5000');
+    const socket = io("https://clg.onrender.com");
     socketRef.current = socket;
 
     socket.emit('setup', user);
