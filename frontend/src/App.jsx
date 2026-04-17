@@ -13,7 +13,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import { NotificationProvider } from './context/NotificationContext';
 import axios from 'axios';
 
-axios.defaults.baseURL = "https://clg.onrender.com";
+axios.defaults.baseURL = "https://clg-2ns2.onrender.com";
 
 // Handle 401 errors globally
 axios.interceptors.response.use(
