@@ -18,7 +18,7 @@ const Login = ({ onLogin }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await axios.post('/auth/login', { email, password });
+      const { data } = await axios.post('/api/auth/login', { email, password });
       onLogin(data);
       navigate('/dashboard');
     } catch (err) {
