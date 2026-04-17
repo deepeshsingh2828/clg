@@ -65,7 +65,10 @@ const CompleteProfile = ({ user, onProfileComplete }) => {
     setLoading(true);
     setError('');
     try {
-      await axios.post('/users/profile', formData);
+      await axios.post('/api/users/profile', {
+        ...formData,
+        userId: user._id
+    });
       if (onProfileComplete) onProfileComplete();
       navigate('/dashboard');
     } catch (err) {
