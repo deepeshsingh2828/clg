@@ -18,7 +18,7 @@ const Register = ({ onLogin }) => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await axios.post('/auth/register', formData);
+      const { data } = await axios.post('/api/auth/register', formData);
       onLogin(data); // Auto-login user
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
