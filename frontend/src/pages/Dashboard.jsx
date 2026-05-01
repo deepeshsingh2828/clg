@@ -5,7 +5,7 @@ import axios from 'axios';
 import {
   Users, Briefcase, MessageSquare, TrendingUp, Sparkles,
   GraduationCap, BookOpen, Target, UserCheck, Award,
-  Building, Globe, PlusCircle, ChevronRight
+  Building, Globe, PlusCircle, ChevronRight, Eye, X
 } from 'lucide-react';
 
 const Dashboard = ({ user }) => {
@@ -144,6 +144,50 @@ const StudentDashboard = ({ user, profile }) => {
    ALUMNI DASHBOARD – Violet/Indigo theme
    ═══════════════════════════════════════════ */
 const AlumniDashboard = ({ user, profile }) => {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [viewProfileModal, setViewProfileModal] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  const fetchRequests = async () => {
+    try {
+      const { data } = await axios.get('/contact-requests/alumni');
+      setRequests(data.filter(r => r.status === 'pending_alumni'));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const handleAction = async (id, status) => {
+    try {
+      await axios.put(`/contact-requests/alumni/${id}`, { status });
+      fetchRequests();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleViewProfile = async (userId) => {
+    setViewProfileModal(userId);
+    setLoadingProfile(true);
+    setStudentProfile(null);
+    try {
+      const { data } = await axios.get(`/users/profile/${userId}`);
+      setStudentProfile(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto py-6">
       {/* Welcome */}
@@ -154,6 +198,47 @@ const AlumniDashboard = ({ user, profile }) => {
         <p className="mt-2 text-lg text-slate-500 dark:text-slate-400">
           {profile?.role ? `${profile.role} at ${profile.company}` : 'BCA Alumni'} — Inspire and guide the next generation.
         </p>
+      </motion.div>
+
+      {/* Incoming Requests */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <UserCheck className="h-5 w-5 text-violet-500" /> Action Required: Contact Requests
+        </h2>
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6">
+          {loading ? (
+            <p className="text-slate-500">Loading requests...</p>
+          ) : requests.length === 0 ? (
+            <p className="text-slate-500 dark:text-slate-400">No pending requests right now.</p>
+          ) : (
+            <div className="space-y-4">
+              {requests.map(req => (
+                <div key={req._id} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                    <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                      {req.requester?.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 dark:text-white">{req.requester?.name}</p>
+                      <p className="text-sm text-slate-500">{req.requester?.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button onClick={() => handleViewProfile(req.requester._id)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-lg transition border border-blue-200 dark:border-blue-800 flex items-center justify-center gap-1">
+                      <Eye className="h-4 w-4" /> View Info
+                    </button>
+                    <button onClick={() => handleAction(req._id, 'pending_admin')} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition shadow">
+                      Approve
+                    </button>
+                    <button onClick={() => handleAction(req._id, 'rejected_by_alumni')} className="flex-1 sm:flex-none px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition shadow">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </motion.div>
 
       {/* Quick Actions */}
@@ -235,6 +320,60 @@ const AlumniDashboard = ({ user, profile }) => {
           </Link>
         </motion.div>
       )}
+
+      {/* View Profile Modal */}
+      {viewProfileModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewProfileModal(null)}>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-100 dark:border-slate-700 relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setViewProfileModal(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <X className="h-6 w-6" />
+            </button>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 border-b border-gray-100 dark:border-slate-800 pb-2">Student Information</h2>
+            {loadingProfile ? (
+              <div className="py-10 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+            ) : studentProfile ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">
+                    {studentProfile.user?.name?.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-white">{studentProfile.user?.name}</h3>
+                    <p className="text-slate-500">{studentProfile.user?.email}</p>
+                  </div>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Current Year</p>
+                    <p className="font-medium text-slate-800 dark:text-white">{studentProfile.currentYear || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Enrollment No.</p>
+                    <p className="font-medium text-slate-800 dark:text-white">{studentProfile.enrollmentNumber || 'N/A'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Skills</p>
+                    <div className="flex flex-wrap gap-1">
+                      {studentProfile.skills?.length > 0 ? studentProfile.skills.map(s => (
+                        <span key={s} className="bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-600 text-xs font-medium">{s}</span>
+                      )) : <span className="text-sm text-slate-400">Not specified</span>}
+                    </div>
+                  </div>
+                  {studentProfile.bio && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Bio</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{studentProfile.bio}"</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="py-10 text-center text-slate-500">Could not load profile. It might be incomplete.</div>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

@@ -65,7 +65,7 @@ const CompleteProfile = ({ user, onProfileComplete }) => {
     setLoading(true);
     setError('');
     try {
-      await axios.post('/api/users/profile', {
+      await axios.post('/users/profile', {
         ...formData,
         userId: user._id
     });

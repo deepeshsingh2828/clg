@@ -141,9 +141,9 @@ router.get('/admin/stats', protect, admin, async (req, res) => {
     const totalStudents = await User.countDocuments({ role: 'student' });
     const totalAlumni = await User.countDocuments({ role: 'alumni' });
     const totalProfiles = await Profile.countDocuments({ profileCompleted: true });
-    const pendingRequests = await ContactRequest.countDocuments({ status: 'pending' });
+    const pendingRequests = await ContactRequest.countDocuments({ status: { $in: ['pending_alumni', 'pending_admin'] } });
     const approvedRequests = await ContactRequest.countDocuments({ status: 'approved' });
-    const rejectedRequests = await ContactRequest.countDocuments({ status: 'rejected' });
+    const rejectedRequests = await ContactRequest.countDocuments({ status: { $in: ['rejected_by_alumni', 'rejected_by_admin'] } });
     const pendingApprovals = await User.countDocuments({ isApproved: false, role: { $ne: 'admin' } });
     res.json({ totalUsers, totalStudents, totalAlumni, totalProfiles, pendingRequests, approvedRequests, rejectedRequests, pendingApprovals });
   } catch (err) {

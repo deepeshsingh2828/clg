@@ -19,7 +19,6 @@ const Navbar = ({ user, onLogout }) => {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDarkMode(false);
       document.documentElement.classList.remove('dark');
     }

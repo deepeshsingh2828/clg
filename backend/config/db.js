@@ -16,9 +16,11 @@ const connectDB = async () => {
     if (!connected) {
       const mongoServer = await MongoMemoryServer.create();
       const memUri = mongoServer.getUri();
-      await mongoose.connect(memUri);
       console.log(`MongoDB Memory Server Connected: ${memUri}`);
-      // Auto-seed demo accounts so logins always work
+      connected = true;
+    }
+    // Auto-seed demo accounts so logins always work regardless of DB type
+    if (connected) {
       await seedDemoAccounts();
     }
   } catch (error) {

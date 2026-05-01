@@ -5,7 +5,7 @@ import {
   ShieldCheck, CheckCircle, XCircle, Clock, Trash2, Users,
   AlertCircle, GraduationCap, Award, Briefcase, MapPin,
   Mail, Phone, Globe, Eye, UserCheck, UserX, ChevronRight,
-  KeyRound, CheckCheck
+  KeyRound, CheckCheck, X
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -19,6 +19,9 @@ const AdminDashboard = () => {
   const [rejectMsg, setRejectMsg] = useState('');
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
+  const [viewProfileModal, setViewProfileModal] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -69,7 +72,7 @@ const AdminDashboard = () => {
     if (!rejectModal) return;
     setActionLoading(rejectModal + '_ctr_reject');
     try {
-      await axios.put(`/contact-requests/${rejectModal}`, { status: 'rejected', adminMessage: rejectMsg });
+      await axios.put(`/contact-requests/${rejectModal}`, { status: 'rejected_by_admin', adminMessage: rejectMsg });
       showToast('❌ Contact request rejected. Message sent to student.');
       setRejectModal(null);
       setRejectMsg('');
@@ -87,10 +90,24 @@ const AdminDashboard = () => {
     } catch { showToast('Failed.', 'error'); }
   };
 
+  const handleViewProfile = async (userId) => {
+    setViewProfileModal(userId);
+    setLoadingProfile(true);
+    setStudentProfile(null);
+    try {
+      const { data } = await axios.get(`/users/profile/${userId}`);
+      setStudentProfile(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
 
 
 
-  const pendingContactCount = requests.filter(r => r.status === 'pending').length;
+
+  const pendingContactCount = requests.filter(r => r.status === 'pending_admin').length;
 
   if (loading) {
     return (
@@ -216,14 +233,18 @@ const AdminDashboard = () => {
                       <td className="px-5 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase ${
                           req.status === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                          req.status === 'rejected' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                          req.status === 'rejected_by_admin' || req.status === 'rejected_by_alumni' ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
                           'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                        }`}>{req.status}</span>
+                        }`}>{req.status.replace(/_/g, ' ')}</span>
                         {req.adminMessage && <p className="text-xs text-red-400 mt-1 italic truncate max-w-[120px]" title={req.adminMessage}>"{req.adminMessage}"</p>}
                       </td>
                       <td className="px-5 py-4">
-                        {req.status === 'pending' ? (
+                        {req.status === 'pending_admin' ? (
                           <div className="flex gap-2">
+                            <button onClick={() => handleViewProfile(req.requester._id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg font-medium text-xs transition border border-blue-200 dark:border-blue-800 shadow">
+                              <Eye className="h-3.5 w-3.5" /> View Info
+                            </button>
                             <button onClick={() => handleApproveContact(req._id)}
                               disabled={actionLoading === req._id + '_ctr_approve'}
                               className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-xs transition shadow disabled:opacity-60">
@@ -416,6 +437,64 @@ const AdminDashboard = () => {
         )}
       </AnimatePresence>
 
+      {/* ═══════════ VIEW PROFILE MODAL ═══════════ */}
+      <AnimatePresence>
+        {viewProfileModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setViewProfileModal(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-gray-100 dark:border-slate-700 relative">
+              <button onClick={() => setViewProfileModal(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <X className="h-6 w-6" />
+              </button>
+              <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-4 border-b border-gray-100 dark:border-slate-800 pb-2">Student Information</h2>
+              {loadingProfile ? (
+                <div className="py-10 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>
+              ) : studentProfile ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">
+                      {studentProfile.user?.name?.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-white">{studentProfile.user?.name}</h3>
+                      <p className="text-slate-500">{studentProfile.user?.email}</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Current Year</p>
+                      <p className="font-medium text-slate-800 dark:text-white">{studentProfile.currentYear || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">Enrollment No.</p>
+                      <p className="font-medium text-slate-800 dark:text-white">{studentProfile.enrollmentNumber || 'N/A'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {studentProfile.skills?.length > 0 ? studentProfile.skills.map(s => (
+                          <span key={s} className="bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-200 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-600 text-xs font-medium">{s}</span>
+                        )) : <span className="text-sm text-slate-400">Not specified</span>}
+                      </div>
+                    </div>
+                    {studentProfile.bio && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-1">Bio</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300 italic">"{studentProfile.bio}"</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="py-10 text-center text-slate-500">Could not load profile. It might be incomplete.</div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

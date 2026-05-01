@@ -45,8 +45,8 @@ const AlumniDirectory = ({ user }) => {
     setRequestingId(alumniUserId);
     try {
       await axios.post('/contact-requests', { targetAlumniId: alumniUserId });
-      setRequestStatuses(prev => ({ ...prev, [alumniUserId]: { status: 'pending' } }));
-      showToast('Request sent! Awaiting admin approval.', 'success');
+      setRequestStatuses(prev => ({ ...prev, [alumniUserId]: { status: 'pending_alumni' } }));
+      showToast('Request sent! Awaiting alumni approval.', 'success');
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to send request.';
       showToast(msg, 'error');
@@ -197,7 +197,7 @@ const AlumniDirectory = ({ user }) => {
                     <div className="flex flex-col items-center justify-center text-center py-2 gap-2">
                       <Lock className="h-6 w-6 text-slate-400" />
                       <p className="text-sm text-slate-500 dark:text-slate-400">Contact details are private</p>
-                      {reqState.status === 'rejected' && reqState.message && (
+                      {(reqState.status === 'rejected_by_admin' || reqState.status === 'rejected_by_alumni') && reqState.message && (
                         <p className="text-xs text-red-500 mt-1 italic">"{reqState.message}"</p>
                       )}
                     </div>
@@ -211,11 +211,11 @@ const AlumniDirectory = ({ user }) => {
                       <div className="flex items-center justify-center gap-2 py-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                         <CheckCircle className="h-4 w-4" /> Access Granted
                       </div>
-                    ) : reqState.status === 'pending' ? (
+                    ) : reqState.status === 'pending_alumni' || reqState.status === 'pending_admin' ? (
                       <div className="flex items-center justify-center gap-2 py-2 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 rounded-xl text-sm font-medium border border-amber-200 dark:border-amber-800">
-                        <Clock className="h-4 w-4" /> Request Pending
+                        <Clock className="h-4 w-4" /> {reqState.status === 'pending_alumni' ? 'Waiting for Alumni' : 'Waiting for Admin'}
                       </div>
-                    ) : reqState.status === 'rejected' ? (
+                    ) : reqState.status === 'rejected_by_admin' || reqState.status === 'rejected_by_alumni' ? (
                       <button
                         onClick={() => handleRequestContact(profile.user?._id)}
                         disabled={requestingId === profile.user?._id}

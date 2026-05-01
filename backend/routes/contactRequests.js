@@ -7,17 +7,18 @@ const { protect, admin } = require('../middleware/auth');
 router.post('/', protect, async (req, res) => {
   try {
     const { targetAlumniId } = req.body;
-    // Prevent duplicate pending request
+    // Prevent duplicate pending requests
     const existing = await ContactRequest.findOne({
       requester: req.user._id,
       targetAlumni: targetAlumniId,
-      status: 'pending'
+      status: { $in: ['pending_alumni', 'pending_admin', 'approved'] }
     });
-    if (existing) return res.status(400).json({ message: 'Request already sent and is pending.' });
+    if (existing) return res.status(400).json({ message: 'Request already sent or approved.' });
 
     const request = await ContactRequest.create({
       requester: req.user._id,
-      targetAlumni: targetAlumniId
+      targetAlumni: targetAlumniId,
+      status: 'pending_alumni'
     });
     res.status(201).json(request);
   } catch (err) {
@@ -25,7 +26,7 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-// Get all contact requests (Admin only)
+// Admin: Get all contact requests
 router.get('/all', protect, admin, async (req, res) => {
   try {
     const requests = await ContactRequest.find()
@@ -38,7 +39,19 @@ router.get('/all', protect, admin, async (req, res) => {
   }
 });
 
-// Get current user's own requests (to check approval status & notifications)
+// Alumni: Get requests targeted at them
+router.get('/alumni', protect, async (req, res) => {
+  try {
+    const requests = await ContactRequest.find({ targetAlumni: req.user._id })
+      .populate('requester', 'name email role')
+      .sort({ createdAt: -1 });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Student: Get current user's own sent requests
 router.get('/mine', protect, async (req, res) => {
   try {
     const requests = await ContactRequest.find({ requester: req.user._id })
@@ -56,19 +69,56 @@ router.get('/status/:targetAlumniId', protect, async (req, res) => {
     const request = await ContactRequest.findOne({
       requester: req.user._id,
       targetAlumni: req.params.targetAlumniId
-    });
+    }).sort({ createdAt: -1 });
     res.json(request || { status: 'none' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Admin: Approve or Reject a request
+// Alumni: Approve or Reject a request
+router.put('/alumni/:id', protect, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['pending_admin', 'rejected_by_alumni'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status update by alumni.' });
+    }
+    const request = await ContactRequest.findById(req.params.id)
+      .populate('requester', 'name email')
+      .populate('targetAlumni', 'name email');
+
+    if (!request) return res.status(404).json({ message: 'Request not found.' });
+    if (request.targetAlumni._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to update this request.' });
+    }
+    if (request.status !== 'pending_alumni') {
+      return res.status(400).json({ message: 'Request is not pending alumni approval.' });
+    }
+
+    request.status = status;
+    await request.save();
+
+    const io = req.app.get('io');
+    if (io && request.requester) {
+      io.in(request.requester._id.toString()).emit('contact_request_update', {
+        status: request.status,
+        alumniName: request.targetAlumni.name,
+        message: status === 'pending_admin' ? 'Alumni approved, waiting for admin approval.' : 'Alumni rejected your request.'
+      });
+    }
+
+    res.json(request);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin: Approve or Reject a request (Final step)
 router.put('/:id', protect, admin, async (req, res) => {
   try {
     const { status, adminMessage } = req.body;
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: 'Invalid status.' });
+    if (!['approved', 'rejected_by_admin'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status update by admin.' });
     }
     const request = await ContactRequest.findById(req.params.id)
       .populate('requester', 'name email')
@@ -76,15 +126,19 @@ router.put('/:id', protect, admin, async (req, res) => {
 
     if (!request) return res.status(404).json({ message: 'Request not found.' });
 
+    // Ensure it was already approved by alumni
+    if (request.status !== 'pending_admin' && status === 'approved') {
+      return res.status(400).json({ message: 'Request must be approved by alumni first.' });
+    }
+
     request.status = status;
     request.adminMessage = adminMessage || '';
     await request.save();
 
-    // Emit real-time notification via socket.io
     const io = req.app.get('io');
     if (io && request.requester) {
       io.in(request.requester._id.toString()).emit('contact_request_update', {
-        status,
+        status: request.status,
         alumniName: request.targetAlumni?.name,
         adminMessage: request.adminMessage
       });

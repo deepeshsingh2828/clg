@@ -13,7 +13,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import { NotificationProvider } from './context/NotificationContext';
 import axios from 'axios';
 
-axios.defaults.baseURL = "https://clg-2ns2.onrender.com";
+axios.defaults.baseURL = "http://localhost:5000/api";
 
 // Handle 401 errors globally
 axios.interceptors.response.use(
@@ -51,6 +51,14 @@ const App = () => {
   const [profileChecked, setProfileChecked] = useState(false);
   const [profileComplete, setProfileComplete] = useState(true);
 
+  const handleLogout = () => {
+    setUser(null);
+    setProfileComplete(true);
+    setProfileChecked(true);
+    localStorage.removeItem('userInfo');
+    delete axios.defaults.headers.common['Authorization'];
+  };
+
   useEffect(() => {
     if (user?.token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${user.token}`;
@@ -81,14 +89,6 @@ const App = () => {
     setUser(userInfo);
     setProfileChecked(false);
     setProfileComplete(false);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    setProfileComplete(true);
-    setProfileChecked(true);
-    localStorage.removeItem('userInfo');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   const handleProfileComplete = () => {
